@@ -3,6 +3,7 @@ export 'src/bridge.dart';
 export 'src/bridge/std_logger_bridge.dart';
 export 'src/handler.dart';
 export 'src/handler/json_handler.dart';
+export 'src/handler/multi_handler.dart';
 export 'src/handler/text_handler.dart';
 export 'src/level.dart';
 export 'src/logger.dart';

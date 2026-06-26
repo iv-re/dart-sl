@@ -105,6 +105,39 @@ final logger = Logger(
 );
 ```
 
+## Source Locations
+
+To automatically capture and include the calling source code location:
+
+```dart
+final logger = Logger(
+  handler: LogTextHandler(addSource: true),
+);
+```
+
+`LogTextHandler` output:
+```text
+INFO  application started source=package:my_app/main.dart:42
+```
+
+`LogJsonHandler` output:
+```json
+{
+  "time": "2026-06-27T02:00:00.000Z",
+  "level": "INFO",
+  "msg": "started",
+  "source": {
+    "file": "package:my_app/main.dart",
+    "line": 42,
+    "function": "main"
+  }
+}
+```
+
+> **Warning**
+> Capturing stack traces is relatively expensive. It is not recommended
+> for production environments where logging performance is critical.
+
 ## Handlers
 
 ### Text Output (`LogTextHandler`)
@@ -135,4 +168,17 @@ final logger = Logger(
 Output:
 ```json
 {"time":"2026-06-17T18:45:00.000Z","level":"INFO","msg":"query completed","duration_ms":45}
+```
+
+### Multi Handler (`LogMultiHandler`)
+
+Duplicates and routes log records to multiple downstream handlers:
+
+```dart
+final logger = Logger(
+  handler: LogMultiHandler([
+    LogJsonHandler(level: .info),
+    externalHandler, // e.g. sending logs to a file or a remote service
+  ]),
+);
 ```

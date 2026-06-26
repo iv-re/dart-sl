@@ -214,6 +214,30 @@ void main() {
 
       verify(() => sink.writeln('INFO  m_suffix trace_id=abc-123')).called(1);
     });
+
+    test('addSource includes source field in output', () {
+      final sink = _MockSink();
+      final handler = LogTextHandler(
+        sink: sink,
+        addSource: true,
+      );
+
+      handler.handle(
+        const .empty(),
+        LogRecord(
+          level: .info,
+          message: 'hello',
+          time: .utc(2000, 11, 15),
+          attrs: const [],
+        ),
+      );
+
+      final captured = verify(() => sink.writeln(captureAny()))
+          .captured
+          .first as String;
+      expect(captured, contains('source='));
+      expect(captured, contains('text_handler_test.dart'));
+    });
   });
 }
 

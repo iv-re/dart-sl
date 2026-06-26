@@ -22,7 +22,7 @@ final class Logger {
   void debug(
     String message, {
     List<LogAttr> attrs = const [],
-    Context ctx = const .empty(),
+    Context? ctx,
   }) {
     log(.debug, message, attrs: attrs, ctx: ctx);
   }
@@ -31,7 +31,7 @@ final class Logger {
   void info(
     String message, {
     List<LogAttr> attrs = const [],
-    Context ctx = const .empty(),
+    Context? ctx,
   }) {
     log(.info, message, attrs: attrs, ctx: ctx);
   }
@@ -40,7 +40,7 @@ final class Logger {
   void warn(
     String message, {
     List<LogAttr> attrs = const [],
-    Context ctx = const .empty(),
+    Context? ctx,
   }) {
     log(.warn, message, attrs: attrs, ctx: ctx);
   }
@@ -49,7 +49,7 @@ final class Logger {
   void error(
     String message, {
     List<LogAttr> attrs = const [],
-    Context ctx = const .empty(),
+    Context? ctx,
   }) {
     log(.error, message, attrs: attrs, ctx: ctx);
   }
@@ -59,11 +59,11 @@ final class Logger {
     LogLevel level,
     String message, {
     List<LogAttr> attrs = const [],
-    Context ctx = const .empty(),
+    Context? ctx,
   }) {
-    if (!_handler.enabled(ctx, level)) return;
+    if (!_handler.enabled(ctx ?? const .empty(), level)) return;
     _handler.handle(
-      ctx,
+      ctx ?? const .empty(),
       LogRecord(
         level: level,
         message: message,

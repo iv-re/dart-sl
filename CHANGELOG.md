@@ -1,3 +1,9 @@
+## 0.0.4
+
+- Added `addSource` option to `LogJsonHandler` and `LogTextHandler`
+  to include caller location in logs.
+- Added `LogMultiHandler` to route logs to multiple handlers.
+
 ## 0.0.3
 
 - Introduced context-aware logging using `ctx`/`attrs` named parameters and `middlewares` support.

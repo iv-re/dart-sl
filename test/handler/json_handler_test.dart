@@ -155,5 +155,32 @@ void main() {
       expect(map['req_id'], 'xyz-789');
       expect(map['msg'], 'processed request_processed');
     });
+
+    test('addSource includes source field in output', () {
+      final sink = _MockSink();
+      final handler = LogJsonHandler(
+        sink: sink,
+        addSource: true,
+      );
+
+      handler.handle(
+        const .empty(),
+        LogRecord(
+          level: .info,
+          message: 'm',
+          time: .utc(2000, 11, 15),
+          attrs: const [],
+        ),
+      );
+
+      final json = verify(() => sink.writeln(captureAny())).captured.first;
+      final map = jsonDecode(json as String) as Map<String, dynamic>;
+
+      expect(map['source'], isNotNull);
+      final source = map['source'] as Map<String, dynamic>;
+      expect(source['file'], contains('json_handler_test.dart'));
+      expect(source['line'], isNotNull);
+      expect(source['function'], contains('main'));
+    });
   });
 }

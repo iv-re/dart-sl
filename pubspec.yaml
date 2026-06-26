@@ -1,6 +1,6 @@
 name: sl
 description: A structured logging library.
-version: 0.0.3
+version: 0.0.4
 repository: https://github.com/iv-re/dart-sl
 
 environment:
@@ -9,6 +9,7 @@ environment:
 dependencies:
   ctx: ^0.0.3
   logging: ^1.2.0
+  stack_trace: ^1.12.1
 
 dev_dependencies:
   test: ^1.25.6

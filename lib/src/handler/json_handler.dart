@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:ctx/ctx.dart';
 import 'package:sl/sl.dart';
+import 'package:sl/src/stack_trace.dart';
 
 /// Formats [LogRecord] entries as line-delimited JSON
 /// and writes them to [sink].
@@ -13,6 +14,7 @@ final class LogJsonHandler implements LogHandler {
     IOSink? sink,
     this.attrs = const [],
     this.middlewares = const [],
+    this.addSource = false,
   }) : sink = sink ?? stdout;
 
   /// Minimum level required for logs to be emitted.
@@ -26,6 +28,9 @@ final class LogJsonHandler implements LogHandler {
 
   /// Middlewares to transform the [LogRecord] before it is written.
   final List<LogHandlerMiddleware> middlewares;
+
+  /// Whether to include the source code location in logs.
+  final bool addSource;
 
   @override
   bool enabled(Context ctx, LogLevel level) => level >= this.level;
@@ -45,6 +50,16 @@ final class LogJsonHandler implements LogHandler {
     resolvedRecord.attrs._addToMap(map);
     attrs._addToMap(map);
 
+    if (addSource) {
+      if (findCallerFrame() case final callerFrame?) {
+        map['source'] = {
+          'file': callerFrame.callerLocation,
+          'line': callerFrame.line,
+          'function': callerFrame.member,
+        };
+      }
+    }
+
     sink.writeln(jsonEncode(map));
   }
 
@@ -55,6 +70,7 @@ final class LogJsonHandler implements LogHandler {
       sink: sink,
       attrs: [...this.attrs, ...attrs],
       middlewares: middlewares,
+      addSource: addSource,
     );
   }
 }

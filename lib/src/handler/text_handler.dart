@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:ctx/ctx.dart';
 import 'package:sl/sl.dart';
+import 'package:sl/src/stack_trace.dart';
 
 /// Color theme configuration for [LogTextHandler] using ANSI escape codes.
 final class LogTextTheme {
@@ -48,6 +49,7 @@ final class LogTextHandler implements LogHandler {
     IOSink? sink,
     this.attrs = const [],
     this.middlewares = const [],
+    this.addSource = false,
   }) : sink = sink ?? stdout;
 
   /// Minimum level required for logs to be emitted.
@@ -68,6 +70,9 @@ final class LogTextHandler implements LogHandler {
 
   /// Middlewares to transform the [LogRecord] before it is written.
   final List<LogHandlerMiddleware> middlewares;
+
+  /// Whether to include the source code location in logs.
+  final bool addSource;
 
   @override
   bool enabled(Context ctx, LogLevel level) => level >= this.level;
@@ -142,6 +147,17 @@ final class LogTextHandler implements LogHandler {
     attrs.forEach(appendAttr);
     resolvedRecord.attrs.forEach(appendAttr);
 
+    if (addSource) {
+      if (findCallerFrame() case final callerFrame?) {
+        appendAttr(
+          .string(
+            'source',
+            '${callerFrame.callerLocation}:${callerFrame.line ?? 0}',
+          ),
+        );
+      }
+    }
+
     sink.writeln(buf.toString());
   }
 
@@ -154,6 +170,7 @@ final class LogTextHandler implements LogHandler {
       sink: sink,
       attrs: [...this.attrs, ...attrs],
       middlewares: middlewares,
+      addSource: addSource,
     );
   }
 

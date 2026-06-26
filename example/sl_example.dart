@@ -7,6 +7,7 @@ void main() {
   final logger = Logger(
     handler: LogTextHandler(
       level: .debug,
+      addSource: true,
       middlewares: [
         (context, record) {
           if (context.value('trace_id') case final String traceId) {
