@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:ctx/ctx.dart';
 import 'package:sl/sl.dart';
 
 /// Color theme configuration for [LogTextHandler] using ANSI escape codes.
@@ -46,6 +47,7 @@ final class LogTextHandler implements LogHandler {
     this.theme,
     IOSink? sink,
     this.attrs = const [],
+    this.middlewares = const [],
   }) : sink = sink ?? stdout;
 
   /// Minimum level required for logs to be emitted.
@@ -64,29 +66,36 @@ final class LogTextHandler implements LogHandler {
   /// Persistent attributes appended to all records.
   final List<LogAttr> attrs;
 
-  @override
-  bool enabled(LogLevel level) => level >= this.level;
+  /// Middlewares to transform the [LogRecord] before it is written.
+  final List<LogHandlerMiddleware> middlewares;
 
   @override
-  void handle(LogRecord record) {
+  bool enabled(Context ctx, LogLevel level) => level >= this.level;
+
+  @override
+  void handle(Context ctx, LogRecord record) {
+    var resolvedRecord = record;
+    for (final middleware in middlewares) {
+      resolvedRecord = middleware(ctx, resolvedRecord);
+    }
     final theme = this.theme;
     final buf = StringBuffer();
 
     if (theme != null) {
       buf
-        ..write(theme.level(record.level))
-        ..write(record.level.label.padRight(5))
+        ..write(theme.level(resolvedRecord.level))
+        ..write(resolvedRecord.level.label.padRight(5))
         ..write(theme.reset)
         ..write(' ');
     } else {
       buf
-        ..write(record.level.label.padRight(5))
+        ..write(resolvedRecord.level.label.padRight(5))
         ..write(' ');
     }
 
     if (scopeKey != null) {
       LogAttr? scopeAttr;
-      for (final attr in [...attrs, ...record.attrs]) {
+      for (final attr in [...attrs, ...resolvedRecord.attrs]) {
         if (attr.key == scopeKey) {
           scopeAttr = attr;
           break;
@@ -110,7 +119,7 @@ final class LogTextHandler implements LogHandler {
       }
     }
 
-    buf.write(record.message);
+    buf.write(resolvedRecord.message);
 
     void appendAttr(LogAttr attr) {
       if (scopeKey != null && attr.key == scopeKey) return;
@@ -131,7 +140,7 @@ final class LogTextHandler implements LogHandler {
     }
 
     attrs.forEach(appendAttr);
-    record.attrs.forEach(appendAttr);
+    resolvedRecord.attrs.forEach(appendAttr);
 
     sink.writeln(buf.toString());
   }
@@ -144,6 +153,7 @@ final class LogTextHandler implements LogHandler {
       theme: theme,
       sink: sink,
       attrs: [...this.attrs, ...attrs],
+      middlewares: middlewares,
     );
   }
 

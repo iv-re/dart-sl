@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:ctx/ctx.dart';
 import 'package:logging/logging.dart' as logging;
 import 'package:mocktail/mocktail.dart';
 import 'package:sl/sl.dart';
@@ -17,6 +18,7 @@ void main() {
       ),
     );
     registerFallbackValue(LogLevel.debug);
+    registerFallbackValue(const Context.empty());
   });
 
   group('StdLoggerBridge', () {
@@ -27,7 +29,7 @@ void main() {
       logging.hierarchicalLoggingEnabled = true;
       logging.Logger.root.level = logging.Level.ALL;
       handler = _MockHandler();
-      when(() => handler.enabled(any())).thenReturn(true);
+      when(() => handler.enabled(any(), any())).thenReturn(true);
       target = Logger(handler: handler);
     });
 
@@ -53,6 +55,7 @@ void main() {
 
         verify(
           () => handler.handle(
+            any(),
             any(
               that: isA<LogRecord>()
                   .having((r) => r.level, 'level', entry.value)
@@ -74,13 +77,16 @@ void main() {
 
       verify(
         () => handler.handle(
+          any(),
           any(
             that: isA<LogRecord>().having(
               (r) => r.attrs,
               'attrs',
-              contains(isA<LogStringAttr>()
-                  .having((a) => a.key, 'key', 'component')
-                  .having((a) => a.value, 'value', 'auth_service')),
+              contains(
+                isA<LogStringAttr>()
+                    .having((a) => a.key, 'key', 'component')
+                    .having((a) => a.value, 'value', 'auth_service'),
+              ),
             ),
           ),
         ),
@@ -90,8 +96,7 @@ void main() {
     });
 
     test('attaches logger name to custom key if configured', () async {
-      final detach =
-          const StdLoggerBridge(nameKey: 'log_name').attach(target);
+      final detach = const StdLoggerBridge(nameKey: 'log_name').attach(target);
 
       final standardLogger = logging.Logger('database');
       standardLogger.info('query executed');
@@ -99,13 +104,16 @@ void main() {
 
       verify(
         () => handler.handle(
+          any(),
           any(
             that: isA<LogRecord>().having(
               (r) => r.attrs,
               'attrs',
-              contains(isA<LogStringAttr>()
-                  .having((a) => a.key, 'key', 'log_name')
-                  .having((a) => a.value, 'value', 'database')),
+              contains(
+                isA<LogStringAttr>()
+                    .having((a) => a.key, 'key', 'log_name')
+                    .having((a) => a.value, 'value', 'database'),
+              ),
             ),
           ),
         ),
@@ -123,6 +131,7 @@ void main() {
 
       verify(
         () => handler.handle(
+          any(),
           any(
             that: isA<LogRecord>().having((r) => r.attrs, 'attrs', isEmpty),
           ),
@@ -143,17 +152,22 @@ void main() {
 
       verify(
         () => handler.handle(
+          any(),
           any(
             that: isA<LogRecord>().having(
               (r) => r.attrs,
               'attrs',
               allOf(
-                contains(isA<LogStringAttr>()
-                    .having((a) => a.key, 'key', 'error')
-                    .having((a) => a.value, 'value', contains('timeout'))),
-                contains(isA<LogStringAttr>()
-                    .having((a) => a.key, 'key', 'stack_trace')
-                    .having((a) => a.value, 'value', isNotEmpty)),
+                contains(
+                  isA<LogStringAttr>()
+                      .having((a) => a.key, 'key', 'error')
+                      .having((a) => a.value, 'value', contains('timeout')),
+                ),
+                contains(
+                  isA<LogStringAttr>()
+                      .having((a) => a.key, 'key', 'stack_trace')
+                      .having((a) => a.value, 'value', isNotEmpty),
+                ),
               ),
             ),
           ),
@@ -165,8 +179,7 @@ void main() {
 
     test('listens only to custom source logger if provided', () async {
       final customSource = logging.Logger('custom_source');
-      final detach =
-          StdLoggerBridge(source: customSource).attach(target);
+      final detach = StdLoggerBridge(source: customSource).attach(target);
 
       logging.Logger.root.info('root message');
       await pump();
@@ -176,6 +189,7 @@ void main() {
 
       verify(
         () => handler.handle(
+          any(),
           any(
             that: isA<LogRecord>().having(
               (r) => r.message,
@@ -188,6 +202,7 @@ void main() {
 
       verifyNever(
         () => handler.handle(
+          any(),
           any(
             that: isA<LogRecord>().having(
               (r) => r.message,
@@ -214,6 +229,7 @@ void main() {
 
       verify(
         () => handler.handle(
+          any(),
           any(
             that: isA<LogRecord>().having(
               (r) => r.message,
@@ -226,6 +242,7 @@ void main() {
 
       verifyNever(
         () => handler.handle(
+          any(),
           any(
             that: isA<LogRecord>().having(
               (r) => r.message,

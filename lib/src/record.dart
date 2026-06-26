@@ -21,4 +21,20 @@ final class LogRecord {
 
   /// Key-value metadata attributes.
   final List<LogAttr> attrs;
+
+  /// Creates a copy of this [LogRecord] with the given fields replaced by
+  /// the new values.
+  LogRecord copyWith({
+    LogLevel? level,
+    String? message,
+    DateTime? time,
+    List<LogAttr>? attrs,
+  }) {
+    return LogRecord(
+      level: level ?? this.level,
+      message: message ?? this.message,
+      time: time ?? this.time,
+      attrs: attrs ?? this.attrs,
+    );
+  }
 }

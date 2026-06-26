@@ -42,7 +42,7 @@ final class StdLoggerBridge implements LogBridge {
         if (record.error != null) .error(record.error!),
         if (record.stackTrace != null) .stackTrace(record.stackTrace!),
       ];
-      logger.log(level, record.message, attrs);
+      logger.log(level, record.message, attrs: attrs);
     });
 
     return subscription.cancel;

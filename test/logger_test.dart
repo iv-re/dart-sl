@@ -1,3 +1,4 @@
+import 'package:ctx/ctx.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:sl/sl.dart';
 import 'package:test/test.dart';
@@ -42,11 +43,12 @@ void main() {
     );
     registerFallbackValue(LogLevel.debug);
     registerFallbackValue(const LogAttr.string('', ''));
+    registerFallbackValue(const Context.empty());
   });
 
   setUp(() {
     handler = _MockHandler();
-    when(() => handler.enabled(any())).thenReturn(true);
+    when(() => handler.enabled(any(), any())).thenReturn(true);
 
     logger = Logger(handler: handler);
   });
@@ -57,6 +59,7 @@ void main() {
 
       verify(
         () => handler.handle(
+          any(),
           any(
             that: recordWith(level: .debug, message: 'msg'),
           ),
@@ -69,6 +72,7 @@ void main() {
 
       verify(
         () => handler.handle(
+          any(),
           any(that: recordWith(message: 'msg')),
         ),
       ).called(1);
@@ -79,6 +83,7 @@ void main() {
 
       verify(
         () => handler.handle(
+          any(),
           any(
             that: recordWith(level: .warn, message: 'msg'),
           ),
@@ -91,6 +96,7 @@ void main() {
 
       verify(
         () => handler.handle(
+          any(),
           any(
             that: recordWith(level: .error, message: 'msg'),
           ),
@@ -99,11 +105,11 @@ void main() {
     });
 
     test('skips handle when disabled', () {
-      when(() => handler.enabled(.debug)).thenReturn(false);
+      when(() => handler.enabled(any(), .debug)).thenReturn(false);
 
       logger.debug('skip');
 
-      verifyNever(() => handler.handle(any()));
+      verifyNever(() => handler.handle(any(), any()));
     });
 
     test('withAttrs forwards to handler.withAttrs', () {
@@ -116,10 +122,11 @@ void main() {
     });
 
     test('log passes attrs to handle', () {
-      logger.log(.info, 'msg', const [.int('n', 1)]);
+      logger.log(.info, 'msg', attrs: const [.int('n', 1)]);
 
       verify(
         () => handler.handle(
+          any(),
           any(that: recordWith(attrsLength: 1)),
         ),
       ).called(1);

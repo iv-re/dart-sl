@@ -24,7 +24,7 @@ logger.error('failed to process request');
 ## Structured Attributes
 
 ```dart
-logger.info('user profile updated', const [
+logger.info('user profile updated', attrs: [
   .string('username', 'alice'),
   .int('age', 30),
   .double('height', 1.75),
@@ -35,7 +35,7 @@ logger.info('user profile updated', const [
 ### Attribute Groups
 
 ```dart
-logger.info('request metadata', const [
+logger.info('request metadata', attrs: [
   .group('http', [
     .string('method', 'POST'),
     .int('status', 201),
@@ -49,7 +49,7 @@ logger.info('request metadata', const [
 try {
   throw StateError('connection timed out');
 } catch (e, stack) {
-  logger.error('database operation failed', [
+  logger.error('database operation failed', attrs: [
     .error(e),
     .stackTrace(stack),
   ]);
@@ -61,24 +61,12 @@ try {
 Create child loggers that inherit and merge parent attributes:
 
 ```dart
-final dbLogger = logger.withAttrs(const [
+final dbLogger = logger.withAttrs([
   .string('component', 'database'),
 ]);
 
 dbLogger.info('executing query'); 
 // Output: INFO  [database] executing query
-```
-
-## Context Integration
-
-If you use the `ctx` package, you can pass and retrieve the logger from the `Context`:
-
-```dart
-import 'package:ctx/ctx.dart';
-import 'package:sl/sl.dart';
-
-final context = const Context.empty().withLogger(logger);
-context.logger.info('hello from context');
 ```
 
 ## Bridging Standard Logging
@@ -90,10 +78,31 @@ import 'package:logging/logging.dart' as logging;
 import 'package:sl/sl.dart';
 
 // Captures root logger logs and forwards them to our logger
-final detach = const StdLoggerBridge().attach(logger);
+final detach = StdLoggerBridge().attach(logger);
 
 // Stop bridging later:
 detach();
+```
+
+## Middlewares
+
+Handlers accept an optional list of `middlewares` to transform log records before they are formatted and written. This is useful for extracting values from a context (using `package:ctx`) and appending them as attributes:
+
+```dart
+final logger = Logger(
+  handler: LogTextHandler(
+    middlewares: [
+      (context, record) {
+        if (context.value('trace_id') case final String traceId) {
+          return record.copyWith(
+            attrs: [...record.attrs, .string('trace_id', traceId)],
+          );
+        }
+        return record;
+      },
+    ],
+  ),
+);
 ```
 
 ## Handlers

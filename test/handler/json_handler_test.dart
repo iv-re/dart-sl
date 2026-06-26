@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:ctx/ctx.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:sl/sl.dart';
 import 'package:test/test.dart';
@@ -10,17 +11,17 @@ class _MockSink extends Mock implements IOSink {}
 void main() {
   group('LogJsonHandler', () {
     test('enabled filters by level', () {
-      final h = LogJsonHandler(level: .warn);
+      final handler = LogJsonHandler(level: .warn);
 
-      expect(h.enabled(.warn), isTrue);
-      expect(h.enabled(.error), isTrue);
-      expect(h.enabled(.info), isFalse);
+      expect(handler.enabled(const .empty(), .warn), isTrue);
+      expect(handler.enabled(const .empty(), .error), isTrue);
+      expect(handler.enabled(const .empty(), .info), isFalse);
     });
 
-    Map<String, dynamic> capture(void Function(LogJsonHandler h) act) {
+    Map<String, dynamic> capture(void Function(LogJsonHandler handler) action) {
       final sink = _MockSink();
-      final h = LogJsonHandler(sink: sink);
-      act(h);
+      final handler = LogJsonHandler(sink: sink);
+      action(handler);
 
       final call = verify(() => sink.writeln(captureAny()));
       return jsonDecode(call.captured.first as String) as Map<String, dynamic>;
@@ -28,7 +29,8 @@ void main() {
 
     test('handle contains time, level and msg', () {
       final map = capture(
-        (h) => h.handle(
+        (handler) => handler.handle(
+          const .empty(),
           LogRecord(
             level: .error,
             message: 'fail',
@@ -45,7 +47,8 @@ void main() {
 
     test('handle includes attrs', () {
       final map = capture(
-        (h) => h.handle(
+        (handler) => handler.handle(
+          const .empty(),
           LogRecord(
             level: .info,
             message: 'ok',
@@ -68,16 +71,20 @@ void main() {
 
     test('handle formats group as nested map', () {
       final map = capture(
-        (h) => h.handle(
+        (handler) => handler.handle(
+          const .empty(),
           LogRecord(
             level: .debug,
             message: 'query',
             time: .utc(2000, 11, 15),
             attrs: const [
-              .group('db', [
-                .string('sql', 'SELECT 1'),
-                .int('dur', 42),
-              ]),
+              .group(
+                'db',
+                [
+                  .string('sql', 'SELECT 1'),
+                  .int('dur', 42),
+                ],
+              ),
             ],
           ),
         ),
@@ -89,12 +96,13 @@ void main() {
     test('withAttrs includes combined attrs in output', () {
       final sink = _MockSink();
 
-      final h = LogJsonHandler(
+      final handler = LogJsonHandler(
         sink: sink,
         attrs: const [.string('a', '1')],
       ).withAttrs(const [.string('b', '2')]);
 
-      h.handle(
+      handler.handle(
+        const .empty(),
         LogRecord(
           level: .info,
           message: 'm',
@@ -108,6 +116,44 @@ void main() {
       expect(map['a'], '1');
       expect(map['b'], '2');
       expect(map['c'], '3');
+    });
+
+    test('middleware modifies record based on context', () {
+      final sink = _MockSink();
+
+      final handler = LogJsonHandler(
+        sink: sink,
+        middlewares: [
+          (ctx, record) {
+            if (ctx.value('req_id') case final String reqId) {
+              return record.copyWith(
+                attrs: [...record.attrs, .string('req_id', reqId)],
+              );
+            }
+            return record;
+          },
+          (ctx, record) {
+            return record.copyWith(message: '${record.message}_processed');
+          },
+        ],
+      );
+
+      final context = const Context.empty().withValue('req_id', 'xyz-789');
+
+      handler.handle(
+        context,
+        LogRecord(
+          level: .info,
+          message: 'processed request',
+          time: .utc(2000, 11, 15),
+          attrs: const [],
+        ),
+      );
+
+      final json = verify(() => sink.writeln(captureAny())).captured.first;
+      final map = jsonDecode(json as String) as Map<String, dynamic>;
+      expect(map['req_id'], 'xyz-789');
+      expect(map['msg'], 'processed request_processed');
     });
   });
 }

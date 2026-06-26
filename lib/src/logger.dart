@@ -1,3 +1,4 @@
+import 'package:ctx/ctx.dart';
 import 'package:sl/src/attr.dart';
 import 'package:sl/src/handler.dart';
 import 'package:sl/src/level.dart';
@@ -18,29 +19,51 @@ final class Logger {
   }
 
   /// Logs a message at [LogLevel.debug] with optional attributes.
-  void debug(String message, [List<LogAttr> attrs = const []]) {
-    log(.debug, message, attrs);
+  void debug(
+    String message, {
+    List<LogAttr> attrs = const [],
+    Context ctx = const .empty(),
+  }) {
+    log(.debug, message, attrs: attrs, ctx: ctx);
   }
 
   /// Logs a message at [LogLevel.info] with optional attributes.
-  void info(String message, [List<LogAttr> attrs = const []]) {
-    log(.info, message, attrs);
+  void info(
+    String message, {
+    List<LogAttr> attrs = const [],
+    Context ctx = const .empty(),
+  }) {
+    log(.info, message, attrs: attrs, ctx: ctx);
   }
 
   /// Logs a message at [LogLevel.warn] with optional attributes.
-  void warn(String message, [List<LogAttr> attrs = const []]) {
-    log(.warn, message, attrs);
+  void warn(
+    String message, {
+    List<LogAttr> attrs = const [],
+    Context ctx = const .empty(),
+  }) {
+    log(.warn, message, attrs: attrs, ctx: ctx);
   }
 
   /// Logs a message at [LogLevel.error] with optional attributes.
-  void error(String message, [List<LogAttr> attrs = const []]) {
-    log(.error, message, attrs);
+  void error(
+    String message, {
+    List<LogAttr> attrs = const [],
+    Context ctx = const .empty(),
+  }) {
+    log(.error, message, attrs: attrs, ctx: ctx);
   }
 
   /// Logs a message at a specific [level] with optional [attrs].
-  void log(LogLevel level, String message, [List<LogAttr> attrs = const []]) {
-    if (!_handler.enabled(level)) return;
+  void log(
+    LogLevel level,
+    String message, {
+    List<LogAttr> attrs = const [],
+    Context ctx = const .empty(),
+  }) {
+    if (!_handler.enabled(ctx, level)) return;
     _handler.handle(
+      ctx,
       LogRecord(
         level: level,
         message: message,

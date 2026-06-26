@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:ctx/ctx.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:sl/sl.dart';
 import 'package:test/test.dart';
@@ -9,18 +10,19 @@ class _MockSink extends Mock implements IOSink {}
 void main() {
   group('LogTextHandler', () {
     test('enabled filters by level', () {
-      final h = LogTextHandler(level: .warn);
+      final handler = LogTextHandler(level: .warn);
 
-      expect(h.enabled(.warn), isTrue);
-      expect(h.enabled(.error), isTrue);
-      expect(h.enabled(.info), isFalse);
+      expect(handler.enabled(const .empty(), .warn), isTrue);
+      expect(handler.enabled(const .empty(), .error), isTrue);
+      expect(handler.enabled(const .empty(), .info), isFalse);
     });
 
     test('handle writes level label and message', () {
       final sink = _MockSink();
-      final h = LogTextHandler(sink: sink, scopeKey: null);
+      final handler = LogTextHandler(sink: sink, scopeKey: null);
 
-      h.handle(
+      handler.handle(
+        const .empty(),
         LogRecord(
           level: .info,
           message: 'hello',
@@ -34,9 +36,10 @@ void main() {
 
     test('handle shows [scope] when scopeKey attr exists', () {
       final sink = _MockSink();
-      final h = LogTextHandler(sink: sink);
+      final handler = LogTextHandler(sink: sink);
 
-      h.handle(
+      handler.handle(
+        const .empty(),
         LogRecord(
           level: .error,
           message: 'fail',
@@ -50,9 +53,10 @@ void main() {
 
     test('handle omits [scope] when scopeKey attr is missing', () {
       final sink = _MockSink();
-      final h = LogTextHandler(sink: sink);
+      final handler = LogTextHandler(sink: sink);
 
-      h.handle(
+      handler.handle(
+        const .empty(),
         LogRecord(
           level: .warn,
           message: 'warn',
@@ -66,9 +70,10 @@ void main() {
 
     test('handle formats attr types and excludes scopeKey from append', () {
       final sink = _MockSink();
-      final h = LogTextHandler(sink: sink, scopeKey: 'cmp');
+      final handler = LogTextHandler(sink: sink, scopeKey: 'cmp');
 
-      h.handle(
+      handler.handle(
+        const .empty(),
         LogRecord(
           level: .info,
           message: 'ok',
@@ -89,18 +94,22 @@ void main() {
 
     test('handle formats group attr', () {
       final sink = _MockSink();
-      final h = LogTextHandler(sink: sink, scopeKey: null);
+      final handler = LogTextHandler(sink: sink, scopeKey: null);
 
-      h.handle(
+      handler.handle(
+        const .empty(),
         LogRecord(
           level: .debug,
           message: 'query',
           time: .utc(2000, 11, 15),
           attrs: const [
-            .group('db', [
-              .string('sql', 'SELECT 1'),
-              .int('dur', 42),
-            ]),
+            .group(
+              'db',
+              [
+                .string('sql', 'SELECT 1'),
+                .int('dur', 42),
+              ],
+            ),
           ],
         ),
       );
@@ -112,7 +121,7 @@ void main() {
 
     test('handle formats using LogTextTheme', () {
       final sink = _MockSink();
-      final h = LogTextHandler(
+      final handler = LogTextHandler(
         sink: sink,
         theme: const LogTextTheme(
           key: '<key>',
@@ -122,7 +131,8 @@ void main() {
         ),
       );
 
-      h.handle(
+      handler.handle(
+        const .empty(),
         LogRecord(
           level: .warn,
           message: 'msg',
@@ -152,12 +162,13 @@ void main() {
     test('withAttrs combines attrs in output', () {
       final sink = _MockSink();
 
-      final h = LogTextHandler(
+      final handler = LogTextHandler(
         sink: sink,
         attrs: const [.string('a', '1')],
       ).withAttrs(const [.string('b', '2')]);
 
-      h.handle(
+      handler.handle(
+        const .empty(),
         LogRecord(
           level: .info,
           message: 'm',
@@ -167,6 +178,41 @@ void main() {
       );
 
       verify(() => sink.writeln('INFO  m a=1 b=2 c=3')).called(1);
+    });
+
+    test('middleware modifies record based on context', () {
+      final sink = _MockSink();
+
+      final handler = LogTextHandler(
+        sink: sink,
+        middlewares: [
+          (ctx, record) {
+            if (ctx.value('trace_id') case final String traceId) {
+              return record.copyWith(
+                attrs: [...record.attrs, .string('trace_id', traceId)],
+              );
+            }
+            return record;
+          },
+          (ctx, record) {
+            return record.copyWith(message: '${record.message}_suffix');
+          },
+        ],
+      );
+
+      final context = const Context.empty().withValue('trace_id', 'abc-123');
+
+      handler.handle(
+        context,
+        LogRecord(
+          level: .info,
+          message: 'm',
+          time: .utc(2000, 11, 15),
+          attrs: const [],
+        ),
+      );
+
+      verify(() => sink.writeln('INFO  m_suffix trace_id=abc-123')).called(1);
     });
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:ctx/ctx.dart';
 import 'package:sl/sl.dart';
 
 /// Formats [LogRecord] entries as line-delimited JSON
@@ -11,6 +12,7 @@ final class LogJsonHandler implements LogHandler {
     this.level = .info,
     IOSink? sink,
     this.attrs = const [],
+    this.middlewares = const [],
   }) : sink = sink ?? stdout;
 
   /// Minimum level required for logs to be emitted.
@@ -22,18 +24,25 @@ final class LogJsonHandler implements LogHandler {
   /// Persistent attributes appended to all records.
   final List<LogAttr> attrs;
 
-  @override
-  bool enabled(LogLevel level) => level >= this.level;
+  /// Middlewares to transform the [LogRecord] before it is written.
+  final List<LogHandlerMiddleware> middlewares;
 
   @override
-  void handle(LogRecord record) {
+  bool enabled(Context ctx, LogLevel level) => level >= this.level;
+
+  @override
+  void handle(Context ctx, LogRecord record) {
+    var resolvedRecord = record;
+    for (final middleware in middlewares) {
+      resolvedRecord = middleware(ctx, resolvedRecord);
+    }
     final map = <String, Object>{
-      'time': record.time.toUtc().toIso8601String(),
-      'level': record.level.label,
-      'msg': record.message,
+      'time': resolvedRecord.time.toUtc().toIso8601String(),
+      'level': resolvedRecord.level.label,
+      'msg': resolvedRecord.message,
     };
 
-    record.attrs._addToMap(map);
+    resolvedRecord.attrs._addToMap(map);
     attrs._addToMap(map);
 
     sink.writeln(jsonEncode(map));
@@ -45,6 +54,7 @@ final class LogJsonHandler implements LogHandler {
       level: level,
       sink: sink,
       attrs: [...this.attrs, ...attrs],
+      middlewares: middlewares,
     );
   }
 }
