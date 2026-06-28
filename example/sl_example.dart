@@ -43,6 +43,17 @@ void main() {
 
   scoped.info('processing request');
 
+  // Logger grouping
+  final grouped = logger.withGroup('request').withAttrs(const [
+    .string('id', 'req-42'),
+  ]);
+  grouped.info(
+    'processing request',
+    attrs: const [
+      .string('path', '/api/users'),
+    ],
+  );
+
   scoped.warn(
     'query execution was slow',
     attrs: const [

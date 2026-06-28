@@ -18,4 +18,7 @@ abstract class LogHandler {
 
   /// Returns a new handler instance with additional persistent [attrs].
   LogHandler withAttrs(List<LogAttr> attrs);
+
+  /// Returns a new handler instance with the given group name.
+  LogHandler withGroup(String name);
 }

@@ -182,5 +182,135 @@ void main() {
       expect(source['line'], isNotNull);
       expect(source['function'], contains('main'));
     });
+
+    test('withGroup support simple group nesting', () {
+      final sink = _MockSink();
+      final handler = LogJsonHandler(
+        sink: sink,
+      ).withGroup('request').withAttrs(const [.string('id', '123')]);
+
+      handler.handle(
+        const .empty(),
+        LogRecord(
+          level: .info,
+          message: 'msg',
+          time: .utc(2000, 11, 15),
+          attrs: const [.string('path', '/users')],
+        ),
+      );
+
+      final json = verify(() => sink.writeln(captureAny())).captured.first;
+      final map = jsonDecode(json as String) as Map<String, dynamic>;
+
+      expect(map['time'], '2000-11-15T00:00:00.000Z');
+
+      expect(map['level'], 'INFO');
+      expect(map['msg'], 'msg');
+      expect(map['request'], {
+        'id': '123',
+        'path': '/users',
+      });
+    });
+
+    test('withGroup ignores empty groups', () {
+      final sink = _MockSink();
+      final handler = LogJsonHandler(sink: sink).withGroup('empty_group');
+
+      handler.handle(
+        const .empty(),
+        LogRecord(
+          level: .info,
+          message: 'msg',
+          time: .utc(2000, 11, 15),
+          attrs: const [],
+        ),
+      );
+
+      final json = verify(() => sink.writeln(captureAny())).captured.first;
+      final map = jsonDecode(json as String) as Map<String, dynamic>;
+
+      expect(map.containsKey('empty_group'), isFalse);
+    });
+
+    test('withGroup supports deep merge inside same group', () {
+      final sink = _MockSink();
+      final handler = LogJsonHandler(sink: sink)
+          .withGroup('g')
+          .withAttrs(const [.string('a', '1')])
+          .withAttrs(const [.string('b', '2')]);
+
+      handler.handle(
+        const .empty(),
+        LogRecord(
+          level: .info,
+          message: 'msg',
+          time: .utc(2000, 11, 15),
+          attrs: const [.string('c', '3')],
+        ),
+      );
+
+      final json = verify(() => sink.writeln(captureAny())).captured.first;
+      final map = jsonDecode(json as String) as Map<String, dynamic>;
+
+      expect(map['g'], {
+        'a': '1',
+        'b': '2',
+        'c': '3',
+      });
+    });
+
+    test('withGroup supports nested group calls', () {
+      final sink = _MockSink();
+      final handler = LogJsonHandler(sink: sink)
+          .withGroup('g1')
+          .withAttrs(const [.string('a', '1')])
+          .withGroup('g2')
+          .withAttrs(const [.string('b', '2')]);
+
+      handler.handle(
+        const .empty(),
+        LogRecord(
+          level: .info,
+          message: 'msg',
+          time: .utc(2000, 11, 15),
+          attrs: const [.string('c', '3')],
+        ),
+      );
+
+      final json = verify(() => sink.writeln(captureAny())).captured.first;
+      final map = jsonDecode(json as String) as Map<String, dynamic>;
+
+      expect(map['g1'], {
+        'a': '1',
+        'g2': {
+          'b': '2',
+          'c': '3',
+        },
+      });
+    });
+
+    test('withGroup prioritization: local attrs override global attrs', () {
+      final sink = _MockSink();
+      final handler = LogJsonHandler(
+        sink: sink,
+      ).withGroup('g').withAttrs(const [.string('key', 'global')]);
+
+      handler.handle(
+        const .empty(),
+        LogRecord(
+          level: .info,
+          message: 'msg',
+          time: .utc(2000, 11, 15),
+          attrs: const [.string('key', 'local')],
+        ),
+      );
+
+      final json = verify(() => sink.writeln(captureAny())).captured.first;
+      final map = jsonDecode(json as String) as Map<String, dynamic>;
+
+      expect(map['g'], {
+        'key': 'local',
+      });
+    });
   });
 }

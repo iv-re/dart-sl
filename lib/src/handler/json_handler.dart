@@ -15,6 +15,7 @@ final class LogJsonHandler implements LogHandler {
     this.attrs = const [],
     this.middlewares = const [],
     this.addSource = false,
+    this.groups = const [],
   }) : sink = sink ?? stdout;
 
   /// Minimum level required for logs to be emitted.
@@ -32,6 +33,9 @@ final class LogJsonHandler implements LogHandler {
   /// Whether to include the source code location in logs.
   final bool addSource;
 
+  /// Active groups stack.
+  final List<String> groups;
+
   @override
   bool enabled(Context ctx, LogLevel level) => level >= this.level;
 
@@ -47,8 +51,8 @@ final class LogJsonHandler implements LogHandler {
       'msg': resolvedRecord.message,
     };
 
-    resolvedRecord.attrs._addToMap(map);
     attrs._addToMap(map);
+    _wrapInGroups(resolvedRecord.attrs, groups)._addToMap(map);
 
     if (addSource) {
       if (findCallerFrame() case final callerFrame?) {
@@ -68,10 +72,32 @@ final class LogJsonHandler implements LogHandler {
     return LogJsonHandler(
       level: level,
       sink: sink,
-      attrs: [...this.attrs, ...attrs],
+      attrs: [...this.attrs, ..._wrapInGroups(attrs, groups)],
       middlewares: middlewares,
       addSource: addSource,
+      groups: groups,
     );
+  }
+
+  @override
+  LogHandler withGroup(String name) {
+    return LogJsonHandler(
+      level: level,
+      sink: sink,
+      attrs: attrs,
+      middlewares: middlewares,
+      addSource: addSource,
+      groups: [...groups, name],
+    );
+  }
+
+  static List<LogAttr> _wrapInGroups(List<LogAttr> attrs, List<String> groups) {
+    if (attrs.isEmpty || groups.isEmpty) return attrs;
+    var wrapped = attrs;
+    for (final groupName in groups.reversed) {
+      wrapped = [.group(groupName, wrapped)];
+    }
+    return wrapped;
   }
 }
 
@@ -84,7 +110,10 @@ extension on List<LogAttr> {
         LogDoubleAttr(:final value) => value,
         LogBoolAttr(:final value) => value,
         LogGroupAttr(:final values) => () {
-          final nested = <String, Object>{};
+          final existing = map[attr.key];
+          final nested = existing is Map<String, Object>
+              ? existing
+              : <String, Object>{};
           values._addToMap(nested);
           return nested;
         }(),

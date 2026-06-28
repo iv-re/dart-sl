@@ -1,3 +1,7 @@
+## 0.0.5
+
+- Added `withGroup`
+
 ## 0.0.4
 
 - Added `addSource` option to `LogJsonHandler` and `LogTextHandler`

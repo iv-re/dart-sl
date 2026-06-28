@@ -88,5 +88,24 @@ void main() {
       verify(() => handlerOne.withAttrs(attrs)).called(1);
       verify(() => handlerTwo.withAttrs(attrs)).called(1);
     });
+
+    test('withGroup delegates to all downstream handlers', () {
+      final updatedHandlerOne = _MockHandler();
+      final updatedHandlerTwo = _MockHandler();
+      const groupName = 'group_name';
+
+      when(() => handlerOne.withGroup(groupName)).thenReturn(updatedHandlerOne);
+      when(() => handlerTwo.withGroup(groupName)).thenReturn(updatedHandlerTwo);
+
+      final newMultiHandler =
+          multiHandler.withGroup(groupName) as LogMultiHandler;
+
+      expect(
+        newMultiHandler.handlers,
+        containsAll([updatedHandlerOne, updatedHandlerTwo]),
+      );
+      verify(() => handlerOne.withGroup(groupName)).called(1);
+      verify(() => handlerTwo.withGroup(groupName)).called(1);
+    });
   });
 }

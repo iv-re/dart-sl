@@ -50,6 +50,7 @@ final class LogTextHandler implements LogHandler {
     this.attrs = const [],
     this.middlewares = const [],
     this.addSource = false,
+    this.groups = const [],
   }) : sink = sink ?? stdout;
 
   /// Minimum level required for logs to be emitted.
@@ -73,6 +74,9 @@ final class LogTextHandler implements LogHandler {
 
   /// Whether to include the source code location in logs.
   final bool addSource;
+
+  /// Active groups stack.
+  final List<String> groups;
 
   @override
   bool enabled(Context ctx, LogLevel level) => level >= this.level;
@@ -126,26 +130,36 @@ final class LogTextHandler implements LogHandler {
 
     buf.write(resolvedRecord.message);
 
-    void appendAttr(LogAttr attr) {
+    void appendAttr(LogAttr attr, [String prefix = '']) {
       if (scopeKey != null && attr.key == scopeKey) return;
+
+      final key = prefix.isEmpty ? attr.key : '$prefix.${attr.key}';
+
+      if (attr case LogGroupAttr(:final values)) {
+        for (final child in values) {
+          appendAttr(child, key);
+        }
+        return;
+      }
+
       buf.write(' ');
       if (theme != null) {
         buf
           ..write(theme.key)
-          ..write(attr.key)
+          ..write(key)
           ..write(theme.reset)
           ..write('=')
           ..write(_formatValue(attr));
       } else {
         buf
-          ..write(attr.key)
+          ..write(key)
           ..write('=')
           ..write(_formatValue(attr));
       }
     }
 
     attrs.forEach(appendAttr);
-    resolvedRecord.attrs.forEach(appendAttr);
+    _wrapInGroups(resolvedRecord.attrs, groups).forEach(appendAttr);
 
     if (addSource) {
       if (findCallerFrame() case final callerFrame?) {
@@ -168,10 +182,34 @@ final class LogTextHandler implements LogHandler {
       scopeKey: scopeKey,
       theme: theme,
       sink: sink,
-      attrs: [...this.attrs, ...attrs],
+      attrs: [...this.attrs, ..._wrapInGroups(attrs, groups)],
       middlewares: middlewares,
       addSource: addSource,
+      groups: groups,
     );
+  }
+
+  @override
+  LogHandler withGroup(String name) {
+    return LogTextHandler(
+      level: level,
+      scopeKey: scopeKey,
+      theme: theme,
+      sink: sink,
+      attrs: attrs,
+      middlewares: middlewares,
+      addSource: addSource,
+      groups: [...groups, name],
+    );
+  }
+
+  static List<LogAttr> _wrapInGroups(List<LogAttr> attrs, List<String> groups) {
+    if (attrs.isEmpty || groups.isEmpty) return attrs;
+    var wrapped = attrs;
+    for (final groupName in groups.reversed) {
+      wrapped = [.group(groupName, wrapped)];
+    }
+    return wrapped;
   }
 
   static String _formatValue(LogAttr attr) {

@@ -115,7 +115,7 @@ void main() {
       );
 
       verify(
-        () => sink.writeln('DEBUG query db={sql=SELECT 1, dur=42}'),
+        () => sink.writeln('DEBUG query db.sql=SELECT 1 db.dur=42'),
       ).called(1);
     });
 
@@ -232,11 +232,54 @@ void main() {
         ),
       );
 
-      final captured = verify(() => sink.writeln(captureAny()))
-          .captured
-          .first as String;
+      final captured =
+          verify(() => sink.writeln(captureAny())).captured.first as String;
+
       expect(captured, contains('source='));
       expect(captured, contains('text_handler_test.dart'));
+    });
+
+    test('withGroup formats group flat with dots', () {
+      final sink = _MockSink();
+      final handler = LogTextHandler(sink: sink, scopeKey: null)
+          .withGroup('g1')
+          .withAttrs(const [.string('a', '1')])
+          .withGroup('g2')
+          .withAttrs(const [.string('b', '2')]);
+
+      handler.handle(
+        const .empty(),
+        LogRecord(
+          level: .info,
+          message: 'msg',
+          time: .utc(2000, 11, 15),
+          attrs: const [.string('c', '3')],
+        ),
+      );
+
+      verify(
+        () => sink.writeln('INFO  msg g1.a=1 g1.g2.b=2 g1.g2.c=3'),
+      ).called(1);
+    });
+
+    test('withGroup ignores empty groups', () {
+      final sink = _MockSink();
+      final handler = LogTextHandler(
+        sink: sink,
+        scopeKey: null,
+      ).withGroup('g1');
+
+      handler.handle(
+        const .empty(),
+        LogRecord(
+          level: .info,
+          message: 'msg',
+          time: .utc(2000, 11, 15),
+          attrs: const [],
+        ),
+      );
+
+      verify(() => sink.writeln('INFO  msg')).called(1);
     });
   });
 }

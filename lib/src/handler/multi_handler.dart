@@ -33,4 +33,11 @@ final class LogMultiHandler implements LogHandler {
       handlers.map((handler) => handler.withAttrs(attrs)).toList(),
     );
   }
+
+  @override
+  LogHandler withGroup(String name) {
+    return LogMultiHandler(
+      handlers.map((handler) => handler.withGroup(name)).toList(),
+    );
+  }
 }

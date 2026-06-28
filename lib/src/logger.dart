@@ -18,6 +18,11 @@ final class Logger {
     return Logger(handler: _handler.withAttrs(attrs));
   }
 
+  /// Spawns a child logger with the given group name.
+  Logger withGroup(String name) {
+    return Logger(handler: _handler.withGroup(name));
+  }
+
   /// Logs a message at [LogLevel.debug] with optional attributes.
   void debug(
     String message, {

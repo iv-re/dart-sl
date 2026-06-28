@@ -69,6 +69,36 @@ dbLogger.info('executing query');
 // Output: INFO  [database] executing query
 ```
 
+### Logger Groups
+
+```dart
+final groupedLogger = logger.withGroup('request').withAttrs([
+  .string('id', '123'),
+]);
+
+groupedLogger.info('processing', attrs: [
+  .string('path', '/users'),
+]);
+```
+
+- **`LogJsonHandler`** output:
+  ```json
+  {
+    "time": "2026-06-28T12:00:00.000Z",
+    "level": "INFO",
+    "msg": "processing",
+    "request": {
+      "id": "123",
+      "path": "/users"
+    }
+  }
+  ```
+
+- **`LogTextHandler`** output:
+  ```text
+  INFO  processing request.id=123 request.path=/users
+  ```
+
 ## Bridging Standard Logging
 
 To capture and proxy logs from Dart's standard `logging` package:
